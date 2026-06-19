@@ -14,6 +14,13 @@ import {
   saveSession,
   todayKey
 } from './utils/attendanceStorage'
+import {
+  saveRecordsToFirestore,
+  loadRecordsFromFirestore,
+  saveSessionToFirestore,
+  loadSessionFromFirestore,
+  clearSessionFromFirestore
+} from './utils/firebase'
 
 const pages = {
   ATTENDANCE: 'attendance',
@@ -32,8 +39,31 @@ function App() {
     const auth = loadAuth()
     if (auth?.username) {
       setUsername(auth.username)
-        setRecordsByDay(loadRecords(auth.username))
-      setSession(loadSession(auth.username))
+      const localRecords = loadRecords(auth.username)
+      setRecordsByDay(localRecords)
+      const localSession = loadSession(auth.username)
+      setSession(localSession)
+
+      // Attempt to load from Firestore (fallback if local is empty)
+      if (localRecords.length === 0 || localSession === null) {
+        loadRecordsFromFirestore(auth.username)
+          .then((firestoreRecords) => {
+            if (firestoreRecords && firestoreRecords.length > 0) {
+              setRecordsByDay(firestoreRecords)
+              saveRecords(auth.username, firestoreRecords)
+            }
+          })
+          .catch((error) => console.log('Firestore load (non-critical):', error))
+
+        loadSessionFromFirestore(auth.username)
+          .then((firestoreSession) => {
+            if (firestoreSession) {
+              setSession(firestoreSession)
+              saveSession(auth.username, firestoreSession)
+            }
+          })
+          .catch((error) => console.log('Firestore session load (non-critical):', error))
+      }
     }
   }, [])
 
@@ -44,14 +74,20 @@ function App() {
       return
     }
       saveRecords(username, recordsByDay)
+      saveRecordsToFirestore(username, recordsByDay)
+        .catch((error) => console.log('Firestore save (non-critical):', error))
   }, [username, recordsByDay])
 
   useEffect(() => {
     if (!username) return
     if (session) {
       saveSession(username, session)
+      saveSessionToFirestore(username, session)
+        .catch((error) => console.log('Firestore session save (non-critical):', error))
     } else {
       clearSession(username)
+      clearSessionFromFirestore(username)
+        .catch((error) => console.log('Firestore session clear (non-critical):', error))
     }
   }, [username, session])
 
