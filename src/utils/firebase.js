@@ -16,9 +16,9 @@ const app = initializeApp(firebaseConfig)
 export const db = getFirestore(app)
 
 // Firestore helper functions
-export async function saveRecordsToFirestore(username, recordsByDay) {
+export async function saveRecordsToFirestore(userKey, recordsByDay) {
   try {
-    const docRef = doc(db, 'users', username, 'records', 'data')
+    const docRef = doc(db, 'users', userKey, 'records', 'data')
     await setDoc(docRef, {
       records: recordsByDay,
       lastUpdated: new Date().toISOString()
@@ -29,9 +29,9 @@ export async function saveRecordsToFirestore(username, recordsByDay) {
   }
 }
 
-export async function loadRecordsFromFirestore(username) {
+export async function loadRecordsFromFirestore(userKey) {
   try {
-    const docRef = doc(db, 'users', username, 'records', 'data')
+    const docRef = doc(db, 'users', userKey, 'records', 'data')
     const docSnap = await getDoc(docRef)
     if (docSnap.exists()) {
       return docSnap.data().records || []
@@ -43,14 +43,14 @@ export async function loadRecordsFromFirestore(username) {
   }
 }
 
-export async function saveSessionToFirestore(username, session) {
+export async function saveSessionToFirestore(userKey, session) {
   try {
     if (!session) {
-      const docRef = doc(db, 'users', username, 'session', 'current')
+      const docRef = doc(db, 'users', userKey, 'session', 'current')
       await setDoc(docRef, { session: null, lastUpdated: new Date().toISOString() })
       return
     }
-    const docRef = doc(db, 'users', username, 'session', 'current')
+    const docRef = doc(db, 'users', userKey, 'session', 'current')
     await setDoc(docRef, {
       session: {
         id: session.id,
@@ -66,9 +66,9 @@ export async function saveSessionToFirestore(username, session) {
   }
 }
 
-export async function loadSessionFromFirestore(username) {
+export async function loadSessionFromFirestore(userKey) {
   try {
-    const docRef = doc(db, 'users', username, 'session', 'current')
+    const docRef = doc(db, 'users', userKey, 'session', 'current')
     const docSnap = await getDoc(docRef)
     if (docSnap.exists() && docSnap.data().session) {
       return docSnap.data().session
@@ -80,9 +80,9 @@ export async function loadSessionFromFirestore(username) {
   }
 }
 
-export async function clearSessionFromFirestore(username) {
+export async function clearSessionFromFirestore(userKey) {
   try {
-    const docRef = doc(db, 'users', username, 'session', 'current')
+    const docRef = doc(db, 'users', userKey, 'session', 'current')
     await setDoc(docRef, { session: null, lastUpdated: new Date().toISOString() })
   } catch (error) {
     console.error('Error clearing session from Firestore:', error)

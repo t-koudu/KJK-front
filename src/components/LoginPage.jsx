@@ -14,7 +14,7 @@ function LoginPage({ onLogin }) {
     }
 
     setError('')
-    onLogin(username.trim())
+    onLogin(username.trim(), password.trim())
   }
 
   return (

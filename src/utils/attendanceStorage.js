@@ -11,8 +11,8 @@ export function loadAuth() {
   }
 }
 
-export function saveAuth(username) {
-  const auth = { username }
+export function saveAuth(auth) {
+  // auth: { username, userKey }
   localStorage.setItem(authKey, JSON.stringify(auth))
   return auth
 }
@@ -23,32 +23,49 @@ export function clearAuth() {
 
 // Records are stored as an array of day groups:
 // [{ id, date, records: [{id,start,end,durationMs,...}, ...] }, ...]
-export function loadRecords(username) {
+export function loadRecords(userKey) {
   try {
-    return JSON.parse(localStorage.getItem(recordsKey(username)) || '[]')
+    return JSON.parse(localStorage.getItem(recordsKey(userKey)) || '[]')
   } catch {
     return []
   }
 }
 
-export function saveRecords(username, groups) {
-  localStorage.setItem(recordsKey(username), JSON.stringify(groups))
+export function saveRecords(userKey, groups) {
+  localStorage.setItem(recordsKey(userKey), JSON.stringify(groups))
 }
 
-export function loadSession(username) {
+export function loadSession(userKey) {
   try {
-    return JSON.parse(localStorage.getItem(sessionKey(username)))
+    return JSON.parse(localStorage.getItem(sessionKey(userKey)))
   } catch {
     return null
   }
 }
 
-export function saveSession(username, session) {
-  localStorage.setItem(sessionKey(username), JSON.stringify(session))
+export function saveSession(userKey, session) {
+  localStorage.setItem(sessionKey(userKey), JSON.stringify(session))
 }
 
-export function clearSession(username) {
-  localStorage.removeItem(sessionKey(username))
+export function clearSession(userKey) {
+  localStorage.removeItem(sessionKey(userKey))
+}
+
+export async function deriveUserKey(username, password) {
+  // Produce a SHA-256 hex digest of `${username}:${password}` as deterministic key
+  try {
+    const input = `${username}:${password}`
+    const enc = new TextEncoder()
+    const data = enc.encode(input)
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data)
+    const hashArray = Array.from(new Uint8Array(hashBuffer))
+    const hashHex = hashArray.map((b) => b.toString(16).padStart(2, '0')).join('')
+    return hashHex
+  } catch (e) {
+    console.error('deriveUserKey error', e)
+    // Fallback to plain username if crypto not available
+    return `${username}`
+  }
 }
 
 export function formatTime(dateString) {
