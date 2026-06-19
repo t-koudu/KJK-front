@@ -12,6 +12,7 @@ import {
   saveAuth,
   saveRecords,
   saveSession,
+  deriveUserKey,
   todayKey
 } from './utils/attendanceStorage'
 import {
