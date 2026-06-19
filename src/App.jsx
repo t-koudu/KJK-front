@@ -70,14 +70,10 @@ function App() {
   }, [])
 
   useEffect(() => {
-    if (!username || !userKey) {
-        setRecordsByDay([])
-      setSession(null)
-      return
-    }
-      saveRecords(userKey, recordsByDay)
-      saveRecordsToFirestore(userKey, recordsByDay)
-        .catch((error) => console.log('Firestore save (non-critical):', error))
+    if (!username || !userKey) return
+    saveRecords(userKey, recordsByDay)
+    saveRecordsToFirestore(userKey, recordsByDay)
+      .catch((error) => console.log('Firestore save (non-critical):', error))
   }, [username, userKey, recordsByDay])
 
   useEffect(() => {
