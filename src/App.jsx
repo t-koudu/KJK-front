@@ -92,7 +92,6 @@ function App() {
 
   const handleLogin = async (user, password) => {
     // Derive deterministic key from username+password
-    const { deriveUserKey } = await import('./utils/attendanceStorage')
     const key = await deriveUserKey(user, password)
     setUsername(user)
     setUserKey(key)
