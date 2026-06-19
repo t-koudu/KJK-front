@@ -1,24 +1,24 @@
 {
-  "firebaserc": {
-    "projects": {
-      "default": "YOUR_FIREBASE_PROJECT_ID"
-    }
-  },
-  "firebase.json": {
-    "hosting": {
-      "public": "dist",
-      "ignore": [
-        "firebase.json",
-        ".firebaserc",
-        "**/.*",
-        "**/node_modules/**"
-      ],
-      "rewrites": [
-        {
-          "source": "**",
-          "destination": "/index.html"
+    "firebaserc": {
+        "projects": {
+            "default": "YOUR_FIREBASE_PROJECT_ID"
         }
-      ]
+    },
+    "firebase.json": {
+        "hosting": {
+            "public": "dist",
+            "ignore": [
+                "firebase.json",
+                ".firebaserc",
+                "**/.*",
+                "**/node_modules/**"
+            ],
+            "rewrites": [
+                {
+                    "source": "**",
+                    "destination": "/index.html"
+                }
+            ]
+        }
     }
-  }
 }

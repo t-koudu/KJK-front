@@ -36,49 +36,68 @@ function App() {
   const [session, setSession] = useState(null)
   const [page, setPage] = useState(pages.ATTENDANCE)
   const [message, setMessage] = useState('')
+  const [isInitializing, setIsInitializing] = useState(true)
 
   useEffect(() => {
-    const auth = loadAuth()
-    if (auth?.username && auth?.userKey) {
+    const initializeFromStorage = async () => {
+      const auth = loadAuth()
+      if (!auth?.username || !auth?.userKey) {
+        setIsInitializing(false)
+        return
+      }
+
       setUsername(auth.username)
       setUserKey(auth.userKey)
+
       const localRecords = loadRecords(auth.userKey)
-      setRecordsByDay(localRecords)
       const localSession = loadSession(auth.userKey)
-      setSession(localSession)
 
-      // Attempt to load from Firestore (fallback if local is empty)
-      if (localRecords.length === 0 || localSession === null) {
-        loadRecordsFromFirestore(auth.userKey)
-          .then((firestoreRecords) => {
-            if (firestoreRecords && firestoreRecords.length > 0) {
-              setRecordsByDay(firestoreRecords)
-              saveRecords(auth.userKey, firestoreRecords)
-            }
-          })
-          .catch((error) => console.log('Firestore load (non-critical):', error))
-
-        loadSessionFromFirestore(auth.userKey)
-          .then((firestoreSession) => {
-            if (firestoreSession) {
-              setSession(firestoreSession)
-              saveSession(auth.userKey, firestoreSession)
-            }
-          })
-          .catch((error) => console.log('Firestore session load (non-critical):', error))
+      if (localRecords.length > 0) {
+        setRecordsByDay(localRecords)
       }
+      if (localSession) {
+        setSession(localSession)
+      }
+
+      if (localRecords.length === 0) {
+        try {
+          const firestoreRecords = await loadRecordsFromFirestore(auth.userKey)
+          if (firestoreRecords && firestoreRecords.length > 0) {
+            setRecordsByDay(firestoreRecords)
+            saveRecords(auth.userKey, firestoreRecords)
+          }
+        } catch (error) {
+          console.log('Firestore load (non-critical):', error)
+        }
+      }
+
+      if (localSession === null) {
+        try {
+          const firestoreSession = await loadSessionFromFirestore(auth.userKey)
+          if (firestoreSession) {
+            setSession(firestoreSession)
+            saveSession(auth.userKey, firestoreSession)
+          }
+        } catch (error) {
+          console.log('Firestore session load (non-critical):', error)
+        }
+      }
+
+      setIsInitializing(false)
     }
+
+    initializeFromStorage()
   }, [])
 
   useEffect(() => {
-    if (!username || !userKey) return
+    if (!username || !userKey || isInitializing) return
     saveRecords(userKey, recordsByDay)
     saveRecordsToFirestore(userKey, recordsByDay)
       .catch((error) => console.log('Firestore save (non-critical):', error))
-  }, [username, userKey, recordsByDay])
+  }, [username, userKey, recordsByDay, isInitializing])
 
   useEffect(() => {
-    if (!username || !userKey) return
+    if (!username || !userKey || isInitializing) return
     if (session) {
       saveSession(userKey, session)
       saveSessionToFirestore(userKey, session)
@@ -88,27 +107,64 @@ function App() {
       clearSessionFromFirestore(userKey)
         .catch((error) => console.log('Firestore session clear (non-critical):', error))
     }
-  }, [username, userKey, session])
+  }, [username, userKey, session, isInitializing])
 
   const handleLogin = async (user, password) => {
-    // Derive deterministic key from username+password
     const key = await deriveUserKey(user, password)
     setUsername(user)
     setUserKey(key)
-    setRecordsByDay(loadRecords(key))
-    setSession(loadSession(key))
     saveAuth({ username: user, userKey: key })
     setMessage('')
+
+    // Try to load local records first
+    const localRecords = loadRecords(key)
+    let recordsToLoad = localRecords
+
+    // If local is empty, fetch from Firestore
+    if (localRecords.length === 0) {
+      try {
+        const firestoreRecords = await loadRecordsFromFirestore(key)
+        if (firestoreRecords && firestoreRecords.length > 0) {
+          recordsToLoad = firestoreRecords
+          // Persist to local storage
+          saveRecords(key, firestoreRecords)
+        }
+      } catch (error) {
+        console.error('Failed to load records from Firestore:', error)
+      }
+    }
+    setRecordsByDay(recordsToLoad)
+
+    // Try to load local session first
+    const localSession = loadSession(key)
+    let sessionToLoad = localSession
+
+    // If local is empty, fetch from Firestore
+    if (!localSession) {
+      try {
+        const firestoreSession = await loadSessionFromFirestore(key)
+        if (firestoreSession) {
+          sessionToLoad = firestoreSession
+          // Persist to local storage
+          saveSession(key, firestoreSession)
+        }
+      } catch (error) {
+        console.error('Failed to load session from Firestore:', error)
+      }
+    }
+    setSession(sessionToLoad)
+
+    setIsInitializing(false)
   }
 
   const handleLogout = () => {
+    // Clear auth but preserve session so work can resume after re-login
     if (username) {
       clearAuth()
-      if (userKey) clearSession(userKey)
     }
     setUsername(null)
-      setUserKey(null)
-      setRecordsByDay([])
+    setUserKey(null)
+    setRecordsByDay([])
     setSession(null)
     setPage(pages.ATTENDANCE)
     setMessage('ログアウトしました。')
